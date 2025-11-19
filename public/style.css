@@ -1,0 +1,133 @@
+:root {
+    --bg-color: #000000;
+    --text-color: #ffffff;
+    --accent-color: #ffffff;
+    --container-bg: #000000;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--container-bg);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* Prevent scrolling */
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    margin-bottom: 0.5rem;
+    color: var(--accent-color);
+}
+
+.subtitle {
+    color: #ccc;
+    margin-top: 0;
+}
+
+.controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.controls label {
+    margin-right: 0.5rem;
+    font-weight: 500;
+    color: #ccc;
+}
+
+.controls select {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 2px 5px rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.controls select:hover,
+.controls select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+}
+
+.status {
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 1rem;
+    font-style: italic;
+}
+
+#word-cloud-container {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--container-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+#loading {
+    font-size: 1.5rem;
+    color: #fff;
+    animation: pulse 1.5s infinite;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+footer {
+    margin-top: 2rem;
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* Word Cloud Text Styles */
+text {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    /* fill is set by JS now */
+}
+
+text:hover {
+    opacity: 0.8;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
