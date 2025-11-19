@@ -1,7 +1,7 @@
 // CONFIGURATION
 // REPLACE THIS WITH YOUR RAILWAY URL WHEN DEPLOYED
-// Example: const SERVER_URL = 'https://wordcloud-production.up.railway.app';
-const SERVER_URL = 'http://localhost:3000';
+const SERVER_URL = 'https://web-production-8dc30.up.railway.app';
+// const SERVER_URL = 'http://localhost:3000';
 
 const container = document.getElementById('word-cloud-container');
 const loadingDiv = document.getElementById('loading');
