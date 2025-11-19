@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Tab</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="lib/d3.min.js"></script>
+    <script src="lib/d3.layout.cloud.js"></script>
+</head>
+
+<body>
+    <div class="controls">
+        <select id="term-limit">
+            <option value="25">25 terms</option>
+            <option value="50">50 terms</option>
+            <option value="75">75 terms</option>
+            <option value="100" selected>100 terms</option>
+            <option value="all">All available</option>
+        </select>
+    </div>
+
+    <main id="word-cloud-container">
+        <div id="loading">Loading trends...</div>
+        <div id="error" style="display: none; color: #666;">
+            Could not connect to server. <br>
+            Make sure the server is running.
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

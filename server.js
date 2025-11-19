@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const cors = require('cors');
 const path = require('path');
 const { scrapeTrends } = require('./scraper');
 const logger = require('./logger');
@@ -12,11 +13,19 @@ const io = socketIo(server);
 const PORT = process.env.PORT || 3000;
 const SCRAPE_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
+// Enable CORS for all routes (allows extension to fetch data)
+app.use(cors());
+
 // Serve static files from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Store latest trends
 let latestTrends = [];
+
+// API Endpoint for Extension
+app.get('/api/trends', (req, res) => {
+    res.json(latestTrends);
+});
 
 // Function to perform scraping and broadcast updates
 const performScrape = async () => {
