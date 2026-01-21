@@ -33,9 +33,8 @@ const scrapeTrends = async () => {
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
-                '--no-zygote',
                 '--disable-gpu',
-                // Additional flags to reduce memory and fix crashpad issues
+                // Flags to reduce memory and fix container issues
                 '--disable-crash-reporter',
                 '--disable-breakpad',
                 '--disable-extensions',
@@ -47,7 +46,8 @@ const scrapeTrends = async () => {
                 '--metrics-recording-only',
                 '--mute-audio',
                 '--no-default-browser-check',
-                '--single-process'
+                '--disable-features=VizDisplayCompositor',
+                '--disable-software-rasterizer'
             ]
         };
 
