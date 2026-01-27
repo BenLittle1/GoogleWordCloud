@@ -28,7 +28,10 @@ chrome.storage.local.get(['termLimit', 'theme'], async (result) => {
         document.getElementById('theme-toggle').checked = true;
     }
 
-    // Initialize active term button
+    // Initialize active term button - clear all first, then set the correct one
+    document.querySelectorAll('.term-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
     document.querySelectorAll('.term-btn').forEach(btn => {
         if (btn.dataset.limit === currentLimit) {
             btn.classList.add('active');

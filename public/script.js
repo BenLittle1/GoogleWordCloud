@@ -96,6 +96,11 @@ if (savedTheme === 'light') {
 
 // Initialize active term button
 document.addEventListener('DOMContentLoaded', () => {
+    // Remove any existing active classes first
+    document.querySelectorAll('.term-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    // Set the correct one as active
     document.querySelectorAll('.term-btn').forEach(btn => {
         if (btn.dataset.limit === currentLimit) {
             btn.classList.add('active');
