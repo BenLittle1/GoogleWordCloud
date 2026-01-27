@@ -39,37 +39,143 @@ h1 {
     margin-top: 0;
 }
 
-.controls {
-    position: absolute;
+/* Settings Toggle Button */
+.settings-toggle {
+    position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 100;
-}
-
-.controls label {
-    margin-right: 0.5rem;
-    font-weight: 500;
-    color: #ccc;
-}
-
-.controls select {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    font-size: 0.9rem;
+    border-radius: 8px;
     cursor: pointer;
-    outline: none;
-    box-shadow: 0 2px 5px rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+    color: white;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.3s ease;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(10px);
 }
 
-.controls select:hover,
-.controls select:focus {
+.settings-toggle:hover {
+    background: rgba(0, 0, 0, 0.8);
     border-color: var(--accent-color);
     box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+}
+
+/* Settings Panel */
+.settings-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 320px;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 24px;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1001;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-panel.open {
+    transform: translateX(0);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: white;
+}
+
+.panel-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.panel-close:hover {
+    color: var(--accent-color);
+    transform: scale(1.1);
+}
+
+.panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-content label {
+    font-weight: 500;
+    color: #ccc;
+    font-size: 0.95rem;
+}
+
+.panel-content select {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 0.95rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.panel-content select:hover,
+.panel-content select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+}
+
+/* Backdrop */
+.backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 999;
+}
+
+.backdrop.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Legacy controls (hidden, kept for compatibility) */
+.controls {
+    display: none;
 }
 
 .status {

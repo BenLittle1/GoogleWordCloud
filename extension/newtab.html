@@ -11,15 +11,31 @@
 </head>
 
 <body>
-    <div class="controls">
-        <select id="term-limit">
-            <option value="25">25 terms</option>
-            <option value="50">50 terms</option>
-            <option value="75">75 terms</option>
-            <option value="100" selected>100 terms</option>
-            <option value="all">All available</option>
-        </select>
+    <!-- Settings Toggle Button -->
+    <button id="settings-toggle" class="settings-toggle" aria-label="Open settings">☰</button>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="settings-panel">
+        <div class="panel-header">
+            <h3>Settings</h3>
+            <button id="panel-close" class="panel-close" aria-label="Close settings">×</button>
+        </div>
+        <div class="panel-content">
+            <label for="term-limit">Display Terms:</label>
+            <select id="term-limit">
+                <option value="25">25 terms</option>
+                <option value="50">50 terms</option>
+                <option value="100" selected>100 terms</option>
+                <option value="150">150 terms</option>
+                <option value="200">200 terms</option>
+                <option value="250">250 terms</option>
+                <option value="all">All available</option>
+            </select>
+        </div>
     </div>
+
+    <!-- Backdrop -->
+    <div id="backdrop" class="backdrop"></div>
 
     <main id="word-cloud-container">
         <div id="loading">Loading trends...</div>

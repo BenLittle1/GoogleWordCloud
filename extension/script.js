@@ -219,6 +219,32 @@ function drawWordCloud(words) {
 
 window.addEventListener('resize', () => {
     if (currentData.length > 0) {
-        drawWordCloud(currentData);
+        updateWordCloud();
+    }
+});
+
+// Settings Panel Toggle
+const settingsPanel = document.getElementById('settings-panel');
+const settingsToggle = document.getElementById('settings-toggle');
+const panelClose = document.getElementById('panel-close');
+const backdrop = document.getElementById('backdrop');
+
+function openSettings() {
+    settingsPanel.classList.add('open');
+    backdrop.classList.add('visible');
+}
+
+function closeSettings() {
+    settingsPanel.classList.remove('open');
+    backdrop.classList.remove('visible');
+}
+
+settingsToggle.addEventListener('click', openSettings);
+panelClose.addEventListener('click', closeSettings);
+backdrop.addEventListener('click', closeSettings);
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeSettings();
     }
 });
