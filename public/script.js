@@ -84,19 +84,47 @@ socket.on('trends-update', (response) => {
     }
 });
 
-const limitSelect = document.getElementById('term-limit');
-limitSelect.addEventListener('change', () => {
-    if (currentData.length > 0) {
-        updateWordCloud();
-    }
+// Term limit management
+let currentLimit = localStorage.getItem('termLimit') || '100';
+
+// Load saved theme preference (default to dark)
+const savedTheme = localStorage.getItem('theme') || 'dark';
+if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+    document.getElementById('theme-toggle').checked = true;
+}
+
+// Initialize active term button
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.term-btn').forEach(btn => {
+        if (btn.dataset.limit === currentLimit) {
+            btn.classList.add('active');
+        }
+    });
+});
+
+// Term button handlers
+document.querySelectorAll('.term-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Remove active class from all buttons
+        document.querySelectorAll('.term-btn').forEach(b => b.classList.remove('active'));
+        // Add active class to clicked button
+        btn.classList.add('active');
+        // Update limit
+        currentLimit = btn.dataset.limit;
+        localStorage.setItem('termLimit', currentLimit);
+        // Update word cloud
+        if (currentData.length > 0) {
+            updateWordCloud();
+        }
+    });
 });
 
 function updateWordCloud() {
-    const limit = limitSelect.value;
     let words = [...currentData];
 
-    if (limit !== 'all') {
-        words = words.slice(0, parseInt(limit));
+    if (currentLimit !== 'all') {
+        words = words.slice(0, parseInt(currentLimit));
     }
 
     drawWordCloud(words);
@@ -118,12 +146,13 @@ function drawWordCloud(words) {
         .domain(sizeExtent)
         .range([15, 90]); // Font size range
 
-    // Color scale: High volume = Pure White, Low volume = Gray
-    // Using Log scale to handle the wide distribution of search volumes (e.g. 10K vs 1M+)
-    // Range is from a visible gray to pure white to create a smooth gradient
+    // Color scale: Adapt to theme
+    // Dark mode: High volume = Pure White, Low volume = Gray
+    // Light mode: High volume = Dark, Low volume = Light Gray
+    const isLightMode = document.body.classList.contains('light-mode');
     const colorScale = d3.scaleLog()
         .domain(sizeExtent)
-        .range(["#666666", "#ffffff"]);
+        .range(isLightMode ? ["#999999", "#1a1a1a"] : ["#666666", "#ffffff"]);
 
     const layout = d3.layout.cloud()
         .size([width, height])
@@ -168,28 +197,44 @@ window.addEventListener('resize', () => {
     }
 });
 
-// Settings Panel Toggle
-const settingsPanel = document.getElementById('settings-panel');
-const settingsToggle = document.getElementById('settings-toggle');
-const panelClose = document.getElementById('panel-close');
-const backdrop = document.getElementById('backdrop');
+// Hamburger Menu Toggle
+const menuToggle = document.getElementById('menu-toggle');
+const menuDropdown = document.getElementById('menu-dropdown');
 
-function openSettings() {
-    settingsPanel.classList.add('open');
-    backdrop.classList.add('visible');
-}
+menuToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuToggle.classList.toggle('active');
+    menuDropdown.classList.toggle('open');
+});
 
-function closeSettings() {
-    settingsPanel.classList.remove('open');
-    backdrop.classList.remove('visible');
-}
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!menuDropdown.contains(e.target) && !menuToggle.contains(e.target)) {
+        menuToggle.classList.remove('active');
+        menuDropdown.classList.remove('open');
+    }
+});
 
-settingsToggle.addEventListener('click', openSettings);
-panelClose.addEventListener('click', closeSettings);
-backdrop.addEventListener('click', closeSettings);
+// Theme Toggle
+const themeToggle = document.getElementById('theme-toggle');
+themeToggle.addEventListener('change', () => {
+    if (themeToggle.checked) {
+        document.body.classList.add('light-mode');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.body.classList.remove('light-mode');
+        localStorage.setItem('theme', 'dark');
+    }
+    // Redraw word cloud with new theme colors
+    if (currentData.length > 0) {
+        updateWordCloud();
+    }
+});
 
+// Close menu on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeSettings();
+        menuToggle.classList.remove('active');
+        menuDropdown.classList.remove('open');
     }
 });

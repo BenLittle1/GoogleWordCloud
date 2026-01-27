@@ -6,9 +6,9 @@ const SERVER_URL = 'https://web-production-8dc30.up.railway.app';
 const container = document.getElementById('word-cloud-container');
 const loadingDiv = document.getElementById('loading');
 const errorDiv = document.getElementById('error');
-const limitSelect = document.getElementById('term-limit');
 
 let currentData = [];
+let currentLimit = '100';
 const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
 const MAX_RETRY_DELAY = 30000; // 30 seconds
@@ -16,11 +16,24 @@ const CACHE_KEY = 'cached_trends';
 const CACHE_TIMESTAMP_KEY = 'cache_timestamp';
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-// Load saved preference
-chrome.storage.local.get(['termLimit'], async (result) => {
+// Load saved preferences
+chrome.storage.local.get(['termLimit', 'theme'], async (result) => {
     if (result.termLimit) {
-        limitSelect.value = result.termLimit;
+        currentLimit = result.termLimit;
     }
+
+    // Apply saved theme
+    if (result.theme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-toggle').checked = true;
+    }
+
+    // Initialize active term button
+    document.querySelectorAll('.term-btn').forEach(btn => {
+        if (btn.dataset.limit === currentLimit) {
+            btn.classList.add('active');
+        }
+    });
 
     // Try to load from cache immediately for instant display
     const cached = await loadFromCache();
@@ -37,13 +50,21 @@ chrome.storage.local.get(['termLimit'], async (result) => {
     fetchTrends();
 });
 
-limitSelect.addEventListener('change', () => {
-    const limit = limitSelect.value;
-    // Save preference
-    chrome.storage.local.set({ termLimit: limit });
-    if (currentData.length > 0) {
-        updateWordCloud();
-    }
+// Term button handlers
+document.querySelectorAll('.term-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Remove active class from all buttons
+        document.querySelectorAll('.term-btn').forEach(b => b.classList.remove('active'));
+        // Add active class to clicked button
+        btn.classList.add('active');
+        // Update limit
+        currentLimit = btn.dataset.limit;
+        chrome.storage.local.set({ termLimit: currentLimit });
+        // Update word cloud
+        if (currentData.length > 0) {
+            updateWordCloud();
+        }
+    });
 });
 
 async function fetchTrends(retryCount = 0) {
@@ -155,11 +176,10 @@ async function loadFromCache() {
 }
 
 function updateWordCloud() {
-    const limit = limitSelect.value;
     let words = [...currentData];
 
-    if (limit !== 'all') {
-        words = words.slice(0, parseInt(limit));
+    if (currentLimit !== 'all') {
+        words = words.slice(0, parseInt(currentLimit));
     }
 
     drawWordCloud(words);
@@ -177,9 +197,11 @@ function drawWordCloud(words) {
         .domain(sizeExtent)
         .range([15, 90]);
 
+    // Color scale: Adapt to theme
+    const isLightMode = document.body.classList.contains('light-mode');
     const colorScale = d3.scaleLog()
         .domain(sizeExtent)
-        .range(["#666666", "#ffffff"]);
+        .range(isLightMode ? ["#999999", "#1a1a1a"] : ["#666666", "#ffffff"]);
 
     const layout = d3.layout.cloud()
         .size([width, height])
@@ -223,28 +245,44 @@ window.addEventListener('resize', () => {
     }
 });
 
-// Settings Panel Toggle
-const settingsPanel = document.getElementById('settings-panel');
-const settingsToggle = document.getElementById('settings-toggle');
-const panelClose = document.getElementById('panel-close');
-const backdrop = document.getElementById('backdrop');
+// Hamburger Menu Toggle
+const menuToggle = document.getElementById('menu-toggle');
+const menuDropdown = document.getElementById('menu-dropdown');
 
-function openSettings() {
-    settingsPanel.classList.add('open');
-    backdrop.classList.add('visible');
-}
+menuToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuToggle.classList.toggle('active');
+    menuDropdown.classList.toggle('open');
+});
 
-function closeSettings() {
-    settingsPanel.classList.remove('open');
-    backdrop.classList.remove('visible');
-}
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!menuDropdown.contains(e.target) && !menuToggle.contains(e.target)) {
+        menuToggle.classList.remove('active');
+        menuDropdown.classList.remove('open');
+    }
+});
 
-settingsToggle.addEventListener('click', openSettings);
-panelClose.addEventListener('click', closeSettings);
-backdrop.addEventListener('click', closeSettings);
+// Theme Toggle
+const themeToggle = document.getElementById('theme-toggle');
+themeToggle.addEventListener('change', () => {
+    if (themeToggle.checked) {
+        document.body.classList.add('light-mode');
+        chrome.storage.local.set({ theme: 'light' });
+    } else {
+        document.body.classList.remove('light-mode');
+        chrome.storage.local.set({ theme: 'dark' });
+    }
+    // Redraw word cloud with new theme colors
+    if (currentData.length > 0) {
+        updateWordCloud();
+    }
+});
 
+// Close menu on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeSettings();
+        menuToggle.classList.remove('active');
+        menuDropdown.classList.remove('open');
     }
 });
