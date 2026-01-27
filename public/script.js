@@ -4,28 +4,83 @@ const statusDiv = document.getElementById('status');
 const loadingDiv = document.getElementById('loading');
 
 let currentData = [];
+const INITIAL_LOAD_TIMEOUT = 15000; // 15 seconds
+let initialLoadTimer = null;
+let dataReceived = false;
 
 // Color scale
 const fill = d3.scaleOrdinal(d3.schemeCategory10);
 
 socket.on('connect', () => {
     statusDiv.textContent = 'Connected to server';
+    statusDiv.style.display = 'block';
+
+    // Set timeout for initial data load
+    if (!dataReceived) {
+        initialLoadTimer = setTimeout(() => {
+            if (!dataReceived) {
+                loadingDiv.textContent = 'Taking longer than expected... Server may be scraping fresh data.';
+                statusDiv.textContent = 'Waiting for trends data (this can take up to 2 minutes on first load)';
+            }
+        }, INITIAL_LOAD_TIMEOUT);
+    }
 });
 
 socket.on('disconnect', () => {
-    statusDiv.textContent = 'Disconnected from server';
+    statusDiv.textContent = 'Disconnected from server - Attempting to reconnect...';
+    statusDiv.style.display = 'block';
 });
 
-socket.on('trends-update', (data) => {
+socket.on('connect_error', (error) => {
+    loadingDiv.textContent = 'Connection error. Retrying...';
+    statusDiv.textContent = `Error: ${error.message}`;
+    statusDiv.style.display = 'block';
+});
+
+socket.on('status', (statusData) => {
+    // Handle status updates from server
+    if (statusData.isScrapingInProgress) {
+        loadingDiv.textContent = statusData.message || 'Server is fetching fresh trends...';
+        statusDiv.textContent = 'This may take a couple of minutes';
+        statusDiv.style.display = 'block';
+    }
+});
+
+socket.on('trends-update', (response) => {
+    // Clear timeout
+    if (initialLoadTimer) {
+        clearTimeout(initialLoadTimer);
+        initialLoadTimer = null;
+    }
+
+    dataReceived = true;
+    const data = response.data || response; // Handle both formats
+
     console.log('Received trends:', data);
-    statusDiv.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+    const timestamp = response.timestamp
+        ? new Date(response.timestamp).toLocaleTimeString()
+        : new Date().toLocaleTimeString();
+
+    let statusText = `Last updated: ${timestamp}`;
+
+    // Add freshness indicator
+    if (response.fresh === false) {
+        statusText += ' (cached data)';
+    }
+    if (response.isScrapingInProgress) {
+        statusText += ' - Refreshing...';
+    }
+
+    statusDiv.textContent = statusText;
+    statusDiv.style.display = 'block';
 
     if (data && data.length > 0) {
         currentData = data;
         loadingDiv.style.display = 'none';
         updateWordCloud();
     } else {
-        statusDiv.textContent += ' (No data available)';
+        loadingDiv.textContent = 'No trends available yet. Please wait...';
     }
 });
 

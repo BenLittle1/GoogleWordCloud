@@ -9,12 +9,31 @@ const errorDiv = document.getElementById('error');
 const limitSelect = document.getElementById('term-limit');
 
 let currentData = [];
+const MAX_RETRIES = 5;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+const CACHE_KEY = 'cached_trends';
+const CACHE_TIMESTAMP_KEY = 'cache_timestamp';
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 // Load saved preference
-chrome.storage.local.get(['termLimit'], (result) => {
+chrome.storage.local.get(['termLimit'], async (result) => {
     if (result.termLimit) {
         limitSelect.value = result.termLimit;
     }
+
+    // Try to load from cache immediately for instant display
+    const cached = await loadFromCache();
+    if (cached) {
+        currentData = cached;
+        loadingDiv.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.style.color = '#999';
+        errorDiv.innerHTML = 'Loading fresh data...';
+        updateWordCloud();
+    }
+
+    // Then fetch fresh data (will update if successful)
     fetchTrends();
 });
 
@@ -27,28 +46,112 @@ limitSelect.addEventListener('change', () => {
     }
 });
 
-async function fetchTrends() {
+async function fetchTrends(retryCount = 0) {
     try {
-        const response = await fetch(`${SERVER_URL}/api/trends`);
-        if (!response.ok) throw new Error('Network response was not ok');
+        const response = await fetch(`${SERVER_URL}/api/trends`, {
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
 
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const data = result.data || result; // Handle both formats
+
         console.log('Fetched trends:', data);
 
         if (data && data.length > 0) {
             currentData = data;
+
+            // Cache the data locally
+            await chrome.storage.local.set({
+                [CACHE_KEY]: data,
+                [CACHE_TIMESTAMP_KEY]: Date.now()
+            });
+
             loadingDiv.style.display = 'none';
             errorDiv.style.display = 'none';
             updateWordCloud();
+
+            // Show freshness indicator
+            if (result.fresh === false) {
+                errorDiv.style.display = 'block';
+                errorDiv.style.color = '#999';
+                errorDiv.innerHTML = 'Showing cached data from server';
+                setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+            }
         } else {
-            loadingDiv.textContent = 'No trends available yet.';
+            throw new Error('No trends data available');
         }
     } catch (error) {
-        console.error('Error fetching trends:', error);
-        loadingDiv.style.display = 'none';
-        errorDiv.style.display = 'block';
-        errorDiv.innerHTML = `Could not connect to server at ${SERVER_URL}.<br>Make sure it is running.`;
+        console.error(`Error fetching trends (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
+
+        // Try to load from local cache
+        const cached = await loadFromCache();
+        if (cached) {
+            console.log('Loaded from local cache');
+            currentData = cached;
+            loadingDiv.style.display = 'none';
+            errorDiv.style.display = 'block';
+            errorDiv.style.color = '#999';
+            errorDiv.innerHTML = 'Showing cached data (server unreachable)';
+            updateWordCloud();
+            return;
+        }
+
+        // Retry logic
+        if (retryCount < MAX_RETRIES) {
+            const delay = Math.min(
+                INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+                MAX_RETRY_DELAY
+            );
+
+            loadingDiv.textContent = `Connection failed. Retrying in ${Math.round(delay/1000)}s... (${retryCount + 1}/${MAX_RETRIES})`;
+
+            setTimeout(() => fetchTrends(retryCount + 1), delay);
+        } else {
+            // All retries exhausted
+            loadingDiv.style.display = 'none';
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = `
+                Could not connect to server at ${SERVER_URL}.<br>
+                Please check your internet connection or try again later.<br>
+                <button id="retry-btn" style="margin-top: 10px; padding: 8px 16px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px;">
+                    Retry Now
+                </button>
+            `;
+
+            // Add retry button handler
+            document.getElementById('retry-btn').addEventListener('click', () => {
+                errorDiv.style.display = 'none';
+                loadingDiv.style.display = 'block';
+                loadingDiv.textContent = 'Retrying...';
+                fetchTrends(0);
+            });
+        }
     }
+}
+
+async function loadFromCache() {
+    try {
+        const result = await chrome.storage.local.get([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+
+        if (result[CACHE_KEY] && result[CACHE_TIMESTAMP_KEY]) {
+            const age = Date.now() - result[CACHE_TIMESTAMP_KEY];
+
+            // Accept cache up to 1 hour old
+            if (age < CACHE_TTL) {
+                return result[CACHE_KEY];
+            } else {
+                console.log('Cache expired, age:', age);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading from cache:', error);
+    }
+
+    return null;
 }
 
 function updateWordCloud() {

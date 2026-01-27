@@ -70,22 +70,19 @@ const scrapeTrends = async () => {
         await page.setViewport({ width: 1920, height: 1080 });
 
         logger.info(`Navigating to ${TRENDS_URL}`);
-        await page.goto(TRENDS_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(TRENDS_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+        // Wait for trends table to load (Google Trends uses client-side rendering)
+        await page.waitForSelector('tbody tr, .feed-item', { timeout: 10000 });
+
+        // Small additional delay for dynamic content to fully render
+        await delay(1000);
 
         // Anti-detection: Random delay before interacting
-        await delay(2000 + Math.random() * 3000);
+        await delay(500 + Math.random() * 1000);
 
         // Wait for the trending list to load
-        // Note: Selectors might change, so we need to be robust.
-        // Currently, Google Trends uses specific classes or table structures.
-        // We will try to find the main table or list items.
-        // As of late 2023/2024, the structure is often a table or grid.
-
-        // Let's try to wait for a common container. 
-        // Using a broad selector strategy to be safer.
-        await page.waitForSelector('tbody tr, .feed-item', { timeout: 10000 }).catch(() => {
-            logger.warn('Could not find standard table rows, trying alternative selectors...');
-        });
+        // Note: Already waited for selector after navigation, so trends should be loaded
 
 
 
@@ -95,9 +92,6 @@ const scrapeTrends = async () => {
 
         while (allTrends.length < MAX_ITEMS) {
             logger.info(`Scraping page ${pageNum}...`);
-
-            // Wait for rows to be present
-            await page.waitForSelector('tbody tr, .feed-item', { timeout: 5000 }).catch(() => { });
 
             const pageTrends = await page.evaluate(() => {
                 const data = [];
@@ -166,8 +160,25 @@ const scrapeTrends = async () => {
                 }
 
                 logger.info('Clicking next page...');
+                const previousRowCount = await page.$$eval('tbody tr', rows => rows.length);
                 await nextButton.click();
-                await delay(3000); // Wait for load
+
+                // Wait for new rows to appear (intelligent wait)
+                try {
+                    await page.waitForFunction(
+                        (prevCount) => {
+                            const currentRows = document.querySelectorAll('tbody tr');
+                            return currentRows.length > prevCount || currentRows.length === 0;
+                        },
+                        { timeout: 2000 },
+                        previousRowCount
+                    );
+                    // Additional small delay for rendering stability
+                    await delay(300);
+                } catch (e) {
+                    // Fallback to shorter fixed delay if waitForFunction times out
+                    await delay(800);
+                }
                 pageNum++;
             } else {
                 logger.info('No next button found.');

@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const { scrapeTrends } = require('./scraper');
 const logger = require('./logger');
+const cache = require('./cache');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,32 +22,69 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Store latest trends
 let latestTrends = [];
+let isScrapingInProgress = false;
+let lastScrapeTime = null;
 
 // API Endpoint for Extension
 app.get('/api/trends', (req, res) => {
-    res.json(latestTrends);
+    const age = lastScrapeTime ? Date.now() - lastScrapeTime : null;
+    res.json({
+        data: latestTrends,
+        timestamp: lastScrapeTime,
+        fresh: age ? age < 30 * 60 * 1000 : false,
+        isScrapingInProgress: isScrapingInProgress,
+        age: age
+    });
 });
 
 // Function to perform scraping and broadcast updates
 const performScrape = async () => {
+    if (isScrapingInProgress) {
+        logger.warn('Scrape already in progress, skipping...');
+        return;
+    }
+
+    isScrapingInProgress = true;
+
     try {
         logger.info('Initiating scheduled scrape...');
         const trends = await scrapeTrends();
 
         if (trends && trends.length > 0) {
             latestTrends = trends;
-            logger.info(`Broadcasting ${trends.length} trends to clients.`);
-            io.emit('trends-update', latestTrends);
+            lastScrapeTime = Date.now();
+
+            // Save to cache
+            await cache.saveCache(trends);
+            logger.info(`Scraped and cached ${trends.length} trends.`);
+
+            // Broadcast to all connected clients
+            io.emit('trends-update', {
+                data: latestTrends,
+                timestamp: lastScrapeTime,
+                fresh: true
+            });
         } else {
             logger.warn('No trends found or scraping failed. Retaining old data.');
         }
     } catch (error) {
         logger.error(`Error during scheduled scrape: ${error.message}`);
+    } finally {
+        isScrapingInProgress = false;
     }
 };
 
-// Initial scrape on startup
-performScrape();
+// Load cache on startup
+(async () => {
+    const cached = await cache.loadCache();
+    if (cached && cached.data && cached.data.length > 0) {
+        latestTrends = cached.data;
+        lastScrapeTime = cached.timestamp;
+        logger.info(`Loaded ${cached.data.length} trends from cache (age: ${Math.round(cached.age/1000)}s)`);
+    } else {
+        logger.info('No valid cache found, will scrape fresh data.');
+    }
+})();
 
 // Schedule scraping every 30 minutes
 setInterval(performScrape, SCRAPE_INTERVAL);
@@ -55,9 +93,21 @@ setInterval(performScrape, SCRAPE_INTERVAL);
 io.on('connection', (socket) => {
     logger.info(`New client connected: ${socket.id}`);
 
-    // Send existing data to new client immediately
+    // Always send data to new client, even if stale
     if (latestTrends.length > 0) {
-        socket.emit('trends-update', latestTrends);
+        const age = lastScrapeTime ? Date.now() - lastScrapeTime : null;
+        socket.emit('trends-update', {
+            data: latestTrends,
+            timestamp: lastScrapeTime,
+            fresh: age ? age < 30 * 60 * 1000 : false,
+            isScrapingInProgress: isScrapingInProgress
+        });
+    } else {
+        // No data yet, let client know scraping is in progress
+        socket.emit('status', {
+            message: 'Fetching trends...',
+            isScrapingInProgress: true
+        });
     }
 
     socket.on('disconnect', () => {
@@ -76,7 +126,12 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });
 
-// Start server
+// Start server immediately (non-blocking)
 server.listen(PORT, () => {
     logger.info(`Server running on http://localhost:${PORT}`);
+
+    // Start initial scrape asynchronously
+    performScrape().catch(err => {
+        logger.error(`Initial scrape failed: ${err.message}`);
+    });
 });
