@@ -7,7 +7,7 @@ Real-time Google Trends scraper that displays trending search terms as an intera
 - **Backend**: Node.js, Express, Socket.IO
 - **Scraping**: Puppeteer with puppeteer-extra-plugin-stealth
 - **Caching**: Custom disk-based cache with 35-minute TTL
-- **Frontend**: D3.js (d3-cloud for word cloud layout)
+- **Frontend**: D3.js (d3-cloud for word cloud layout), requestAnimationFrame for physics mode
 - **Logging**: Winston
 - **Deployment**: Railway (Docker-based)
 
@@ -118,10 +118,22 @@ Returns array of `{ text, size, volumeText }` objects where:
 - Click on terms to open Google search in new tab
 - Responsive design with window resize handling
 
+**Physics Mode:**
+- Toggle between static word cloud and physics simulation
+- DVD screensaver-style: words float independently and bounce off screen edges
+- No word-to-word collisions for calm, smooth motion
+- Uses requestAnimationFrame for smooth 60fps animation
+- Words can be dragged; released words continue with gentle random velocity
+- Accurate text dimensions measured via SVG getBBox() with caching
+- Perpetual motion with velocity capped between 0.2-0.8 pixels/frame
+- Smart data diffing: only redraws when server sends new data (prevents socket reconnect interruptions)
+
 **Settings Panel:**
 - Collapsible slide-out UI with backdrop overlay
-- Term limit options: 25, 50, 100, 150, 200, 250, or "All"
-- Settings persisted to localStorage
+- Term limit options: 10, 25, 50, 100, 150, 200, 250, or "All"
+- Light/Dark mode toggle
+- Physics mode toggle
+- All settings persisted to localStorage
 - Keyboard shortcuts and smooth animations
 
 **Status Indicators:**
@@ -215,10 +227,17 @@ Server runs at `http://localhost:3000`
 - **Cached data never updates**: Check browser console for network errors
 - **Settings not saving**: Clear extension storage and reload
 
+**Physics Mode Issues:**
+- **Words escaping boundaries**: Check `renderPhysics()` boundary logic; text dimensions are measured via `measureText()` using SVG getBBox
+- **Animation stuttering**: Reduce term count; 100+ words at 60fps can be demanding
+- **Click not working after drag**: Click handler checks `event.defaultPrevented` to distinguish from drag
+- **Physics restarting unexpectedly**: Check socket reconnections; data diffing by timestamp should prevent unnecessary redraws
+
 **Performance Issues:**
 - **Slow server startup**: Check if cache.js is loading properly; should be <1s with valid cache
 - **Slow scraping**: Check if all 6 regions are responsive; a single slow region can delay entire scrape
 - **Memory issues**: Monitor Puppeteer instances; should close properly after each scrape
+- **Physics mode lag**: Reduce term count (50-100 recommended); uses requestAnimationFrame at 60fps
 
 **Debugging Tips:**
 - Enable verbose logging: Check `app.log` for detailed scraper output
