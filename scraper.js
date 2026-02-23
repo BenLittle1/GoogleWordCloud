@@ -119,7 +119,6 @@ const scrapeTrends = async () => {
                 '--disable-features=VizDisplayCompositor',
                 '--disable-software-rasterizer',
                 '--no-zygote',
-                '--single-process',
                 '--disable-component-update'
             ]
         };
