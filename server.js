@@ -38,7 +38,9 @@ app.get('/api/trends', (req, res) => {
 });
 
 // Function to perform scraping and broadcast updates
-const performScrape = async () => {
+const performScrape = async (retryCount = 0) => {
+    const MAX_RETRIES = 2;
+
     if (isScrapingInProgress) {
         logger.warn('Scrape already in progress, skipping...');
         return;
@@ -47,7 +49,7 @@ const performScrape = async () => {
     isScrapingInProgress = true;
 
     try {
-        logger.info('Initiating scheduled scrape...');
+        logger.info(`Initiating scheduled scrape...${retryCount > 0 ? ` (retry ${retryCount}/${MAX_RETRIES})` : ''}`);
         const trends = await scrapeTrends();
 
         if (trends && trends.length > 0) {
@@ -66,9 +68,23 @@ const performScrape = async () => {
             });
         } else {
             logger.warn('No trends found or scraping failed. Retaining old data.');
+            // Retry after a short delay
+            if (retryCount < MAX_RETRIES) {
+                isScrapingInProgress = false;
+                logger.info(`Retrying in 60 seconds...`);
+                setTimeout(() => performScrape(retryCount + 1), 60 * 1000);
+                return;
+            }
         }
     } catch (error) {
         logger.error(`Error during scheduled scrape: ${error.message}`);
+        // Retry after a short delay
+        if (retryCount < MAX_RETRIES) {
+            isScrapingInProgress = false;
+            logger.info(`Retrying in 60 seconds...`);
+            setTimeout(() => performScrape(retryCount + 1), 60 * 1000);
+            return;
+        }
     } finally {
         isScrapingInProgress = false;
     }

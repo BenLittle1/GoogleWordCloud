@@ -117,7 +117,10 @@ const scrapeTrends = async () => {
                 '--mute-audio',
                 '--no-default-browser-check',
                 '--disable-features=VizDisplayCompositor',
-                '--disable-software-rasterizer'
+                '--disable-software-rasterizer',
+                '--no-zygote',
+                '--single-process',
+                '--disable-component-update'
             ]
         };
 
@@ -126,7 +129,7 @@ const scrapeTrends = async () => {
             launchOptions.executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
         }
 
-        browser = await puppeteer.launch(launchOptions);
+        browser = await puppeteer.launch({ ...launchOptions, timeout: 30000 });
         const page = await browser.newPage();
 
         // Anti-detection setup
@@ -169,7 +172,18 @@ const scrapeTrends = async () => {
         return [];
     } finally {
         if (browser) {
-            await browser.close();
+            try {
+                await browser.close();
+            } catch (closeErr) {
+                logger.warn(`Browser close failed: ${closeErr.message}`);
+                // Force kill the browser process if close fails
+                try {
+                    const proc = browser.process();
+                    if (proc) proc.kill('SIGKILL');
+                } catch (killErr) {
+                    // Already dead, ignore
+                }
+            }
         }
     }
 };
